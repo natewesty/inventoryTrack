@@ -103,9 +103,9 @@ def special_order(data):
                     update_order(dml_statement)  
                     update_disp_donum(product_details[0], product_details[1])                 
                 elif purchaseType == 'Pickup To Ship':
-                    dml_statement = f'UPDATE "Inventory" WHERE sku = {product_details[0]} AND location = {get_ship_location('Pickup')} SET awaiting_fulfillment = awaiting_fulfillment - {product_details[1]}'
+                    dml_statement = f'UPDATE "Inventory" WHERE sku = {product_details[0]} AND location = {get_ship_location("Pickup")} SET awaiting_fulfillment = awaiting_fulfillment - {product_details[1]}'
                     update_order(dml_statement)
-                    pts_statement = f'UPDATE "Inventory" WHERE sku = {product_details[0]} AND location = {get_ship_location('Ship')} SET awaiting_fulfillment = awaiting_fulfillment + {product_details[1]}'
+                    pts_statement = f'UPDATE "Inventory" WHERE sku = {product_details[0]} AND location = {get_ship_location("Ship")} SET awaiting_fulfillment = awaiting_fulfillment + {product_details[1]}'
                 # Add the order to the ledger
                 log_statement = f'INSERT INTO "InventoryLedger" (order_id, sku, location, adjustment_type, quantity, fulfillment_status) VALUES ({order_details[0]}, {product_details[0]}, {location}, {purchaseType}, {product_details[1]}, {order_details[3]})'
                 update_order(log_statement)

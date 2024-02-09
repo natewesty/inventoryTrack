@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, render_template, make_response, redirect, url_for, session
 from authlib.integrations.flask_client import OAuth
-from order_processing import process_order
-from product_processing import process_product
-from db_interact import query_data
+from scripts.order_processing import process_order
+from scripts.product_processing import process_product
+from scripts.db_interact import query_data
 import logging, os
 import pandas as pd
 
