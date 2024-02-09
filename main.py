@@ -66,8 +66,8 @@ def home():
         disp_statement = 'SELECT * FROM "InventoryDisp"'
         data, metadata = query_data(disp_statement)
         df = pd.DataFrame(data, columns=[field.name for field in metadata.row_type.fields])
-        table = df.to_html()
-        return render_template('index.html', table=table)
+        products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
+        return render_template('index.html', products=products)
     except Exception as e:
         return f"An error occurred: {e}"
 

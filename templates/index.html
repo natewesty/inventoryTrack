@@ -3,38 +3,45 @@
 <head>
     <title>Inventory</title>
     <!-- Import Materialize CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f8f9fa;
-            font-family: Roboto, sans-serif;
-        }
-        .container {
-            text-align: center;
-        }
-        .btn {
-            background-color: #ddbb31;
-        }
-        h1 {
-            color: #343a40;
-            margin-bottom: 30px;
-        }
-    </style>
+    <link rel="stylesheet" href="C:\Users\Nathan.TDE-028\Dropbox\Apps\C7\inventoryTrack\templates\output.css">
+    <!-- Your styles here -->
 </head>
 <body>
     <div class="container">
         <a href="/export" class="btn">Export to CSV</a>
         <h1>Inventory</h1>
-        <table class="striped highlight">
-            {{ table|safe }}
+        <table class="min-w-full divide-y divide-gray-200 table-fixed dark:divide-gray-700">
+            <thead class="bg-gray-100 dark:bg-gray-700">
+                <tr>
+                    <th scope="col" class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                        SKU
+                    </th>
+                    <th scope="col" class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                        Label
+                    </th>
+                    <th scope="col" class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                        Groskopf
+                    </th>
+                    <th scope="col" class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                        Copper Peak
+                    </th>
+                    <th scope="col" class="py-3 px-6 text-xs font-medium tracking-wider text-left text-gray-700 uppercase dark:text-gray-400">
+                        Donum
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                {% for product in products %}
+                <tr class="hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ product.sku }}</td>
+                    <td class="py-4 px-6 text-sm font-medium text-gray-500 whitespace-nowrap dark:text-white">{{ product.label }}</td>
+                    <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ product.bottles_groskopf }}</td>
+                    <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ product.bottles_copperpeak }}</td>
+                    <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ product.bottles_donum }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
-    <!-- Import Materialize JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 </body>
 </html>

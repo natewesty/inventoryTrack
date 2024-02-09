@@ -7,6 +7,15 @@ WORKDIR /InventoryAPI
 # Add the current directory contents into the container at /app
 ADD . /InventoryAPI
 
+# Install Node.js
+RUN apt-get update && apt-get install -y nodejs npm
+
+# Install Tailwind CSS and other dependencies
+RUN npm install
+
+# Build your CSS
+RUN npm run build
+
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
