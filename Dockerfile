@@ -2,10 +2,10 @@
 FROM python:3.12-slim-bookworm
 
 # Set the working directory in the container to /app
-WORKDIR /InventoryAPI
+WORKDIR /inventoryTrack
 
 # Add the current directory contents into the container at /app
-ADD . /InventoryAPI
+ADD . /inventoryTrack
 
 # Install Node.js
 RUN apt-get update && apt-get install -y nodejs npm
