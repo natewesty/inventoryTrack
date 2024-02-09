@@ -1,4 +1,4 @@
-from db_interact import upload_data, query_data, get_ledger_data, get_ship_location, update_disp_donum, update_disp_copperpeak
+from .db_interact import upload_data, query_data, get_ledger_data, get_ship_location, update_disp_donum, update_disp_copperpeak
 import logging
 
 def extract_data(data, keys):

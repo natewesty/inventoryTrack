@@ -1,6 +1,6 @@
 import logging
-from db_interact import upload_data
-from order_processing import extract_data
+from .db_interact import upload_data
+from .order_processing import extract_data
 
 def process_product(data):
     """
