@@ -42,8 +42,62 @@
                      <button class="button is-primary">Export to CSV</button>
                   </form>
                </div>
+               <div class="column is-half">
+                  <h2 class="title is-4 has-text-centered">Transfer Items</h2>
+                  <form action="/transfer" method="post" id="transferForm">
+                     <div class="field">
+                        <label class="label">From</label>
+                        <div class="control">
+                           <div class="select">
+                              <select name="from">
+                                 <option>Groskopf</option>
+                                 <option>Copper Peak</option>
+                                 <option>Donum</option>
+                              </select>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="field">
+                        <label class="label">To</label>
+                        <div class="control">
+                           <div class="select">
+                              <select name="to">
+                                 <option>Groskopf</option>
+                                 <option>Copper Peak</option>
+                                 <option>Donum</option>
+                              </select>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="field">
+                        <label class="label">Transfer Date</label>
+                        <div class="control">
+                           <input class="input" type="date" name="transferDate">
+                        </div>
+                     </div>
+                     <div class="field" id="itemFields">
+                        <div class="control">
+                           <input class="input" type="text" name="sku[]" placeholder="Enter SKU">
+                           <input class="input" type="number" name="quantity[]" placeholder="Enter Quantity">
+                        </div>
+                     </div>
+                     <button type="button" id="addItem">Add Item</button>
+                     <div class="field">
+                        <div class="control">
+                           <button class="button is-primary">Transfer</button>
+                        </div>
+                     </div>
+                  </form>
+               </div>
             </div>
          </div>
       </section>
+      <script>
+         document.getElementById('addItem').addEventListener('click', function() {
+            var newField = document.createElement('div');
+            newField.innerHTML = '<div class="control"><input class="input" type="text" name="sku[]" placeholder="Enter SKU"><input class="input" type="number" name="quantity[]" placeholder="Enter Quantity"></div>';
+            document.getElementById('itemFields').appendChild(newField);
+         });
+      </script>
    </body>
 </html>

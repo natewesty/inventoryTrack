@@ -2,12 +2,25 @@ from flask import Flask, request, jsonify, render_template, make_response, redir
 from authlib.integrations.flask_client import OAuth
 from scripts.order_processing import process_order
 from scripts.product_processing import process_product
-from scripts.db_interact import query_data
+from scripts.db_interact import query_data, schedule_transfer, process_transfer
+from datetime import datetime
 import logging, os
 import pandas as pd
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, DateField, IntegerField
+from wtforms.validators import DataRequired, NumberRange
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
+
+# Set up forms
+
+class TransferForm(FlaskForm):
+    from_location = SelectField('From', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')], validators=[DataRequired()])
+    to_location = SelectField('To', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')], validators=[DataRequired()])
+    transfer_date = DateField('Transfer Date', format='%Y-%m-%d', validators=[DataRequired()])
+    sku = StringField('SKU', validators=[DataRequired()])
+    quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1)])
 
 # Set up logging
 logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -84,6 +97,30 @@ def export():
         return response
     except Exception as e:
         return f"An error occurred: {e}"
+    
+@app.route('/transfer', methods=['POST'])
+def transfer():
+    form = TransferForm(request.form)
+    if form.validate():
+        # Form data is valid, you can process it
+        transfer = (
+            form.sku.data,
+            form.from_location.data,
+            form.to_location.data,
+            datetime.strptime(form.transfer_date.data, '%Y-%m-%d'),
+            form.quantity.data,
+            'pending'
+        )
+        schedule_transfer(*transfer)
+
+        # Process the new transfer if the date is on or before the current date
+        process_transfer(transfer)
+
+        # Redirect to the inventory page
+        return redirect(url_for('home'))
+    else:
+        # Form data is invalid, return an error message
+        return "Error: The form data is invalid."
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
