@@ -103,12 +103,3 @@ def checkrun_transfers():
         # Update the transfer status
         update_statement = f'UPDATE "TransferLedger" SET status = "processed" WHERE sku = {sku} AND from_location = {from_location} AND to_location = {to_location} AND transfer_date = {transfer_date} AND quantity = {quantity}'
         upload_data(update_statement)
-
-def start_scheduler():
-    # Run the checkrun_transfers function every hour
-    schedule.every(1).hours.do(checkrun_transfers)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-        

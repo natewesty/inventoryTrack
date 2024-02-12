@@ -2,12 +2,12 @@ from flask import Flask, request, jsonify, render_template, make_response, redir
 from authlib.integrations.flask_client import OAuth
 from scripts.order_processing import process_order
 from scripts.product_processing import process_product
-from scripts.db_interact import query_data, schedule_transfer, process_transfer, start_scheduler
+from scripts.db_interact import query_data, schedule_transfer, process_transfer
 from datetime import datetime
 import logging, os
 import pandas as pd
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, DateField, IntegerField
+from wtforms import StringField, SelectField, DateField, IntegerField, FieldList, FormField
 from wtforms.validators import DataRequired, NumberRange
 
 app = Flask(__name__)
@@ -16,9 +16,9 @@ app.secret_key = 'secret_key'
 # Set up forms
 
 class TransferForm(FlaskForm):
-    from_location = SelectField('From', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')], validators=[DataRequired()])
-    to_location = SelectField('To', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')], validators=[DataRequired()])
-    transfer_date = DateField('Transfer Date', format='%Y-%m-%d', validators=[DataRequired()])
+    from_location = SelectField('From', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')])
+    to_location = SelectField('To', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')])
+    transfer_date = DateField('Transfer Date', format='%m/%d/%Y')
     sku = StringField('SKU', validators=[DataRequired()])
     quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1)])
 
@@ -98,30 +98,28 @@ def export():
     except Exception as e:
         return f"An error occurred: {e}"
     
-@app.route('/transfer', methods=['POST'])
+@app.route('/transfer', methods=['GET', 'POST'])
 def transfer():
     form = TransferForm(request.form)
-    if form.validate():
-        # Form data is valid, you can process it
-        transfer = (
-            form.sku.data,
-            form.from_location.data,
-            form.to_location.data,
-            datetime.strptime(form.transfer_date.data, '%Y-%m-%d'),
-            form.quantity.data,
-            'pending'
-        )
-        schedule_transfer(*transfer)
-
-        # Process the new transfer if the date is on or before the current date
-        process_transfer(transfer)
-
-        # Redirect to the inventory page
-        return redirect(url_for('home'))
-    else:
-        # Form data is invalid, return an error message
-        return "Error: The form data is invalid."
+    if request.method == 'POST':
+        if form.validate():
+            transfer = (
+                form.sku.data,
+                form.from_location.data,
+                form.to_location.data,
+                datetime.strptime(form.transfer_date.data, '%m/%d/%Y'),
+                int(form.quantity.data),
+                'pending'
+            )
+            schedule_transfer(*transfer)
+            process_transfer(transfer)
+            return redirect(url_for('home'))
+        else:
+            # Form data is invalid, return specific error messages
+            error_messages = [f"{field}: {error}" for field, errors in form.errors.items() for error in errors]
+            return "Error: " + ", ".join(error_messages)
+    return render_template('transfer.html', form=form)  # Pass the form to the template
 
 if __name__ == '__main__':
-    start_scheduler() # Start the scheduler
-    app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
+    port = int(os.environ.get('PORT', 8080))
+    app.run(debug=True, host='0.0.0.0', port=port)
