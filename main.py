@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template, make_response, redir
 from authlib.integrations.flask_client import OAuth
 from scripts.order_processing import process_order
 from scripts.product_processing import process_product
-from scripts.db_interact import query_data, schedule_transfer, process_transfer
+from scripts.db_interact import query_data, schedule_transfer, process_transfer, start_scheduler
 from datetime import datetime
 import logging, os
 import pandas as pd
@@ -123,4 +123,5 @@ def transfer():
         return "Error: The form data is invalid."
 
 if __name__ == '__main__':
+    start_scheduler() # Start the scheduler
     app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
