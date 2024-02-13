@@ -18,7 +18,6 @@ app.secret_key = 'secret_key'
 class TransferForm(FlaskForm):
     from_location = SelectField('From', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')])
     to_location = SelectField('To', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')])
-    transfer_date = DateField('Transfer Date', format='%m/%d/%Y')
     sku = StringField('SKU', validators=[DataRequired()])
     quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1)])
 
@@ -75,12 +74,13 @@ def authorize():
 
 @app.route('/')
 def home():
+    form = TransferForm()  # Create an instance of TransferForm
     try:
         disp_statement = 'SELECT * FROM "InventoryDisp"'
         data, metadata = query_data(disp_statement)
         df = pd.DataFrame(data, columns=[field.name for field in metadata.row_type.fields])
         products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
-        return render_template('index.html', products=products)
+        return render_template('index.html', products=products, form=form)  # Pass the form to the template
     except Exception as e:
         return f"An error occurred: {e}"
 
@@ -107,7 +107,6 @@ def transfer():
                 form.sku.data,
                 form.from_location.data,
                 form.to_location.data,
-                datetime.strptime(form.transfer_date.data, '%m/%d/%Y'),
                 int(form.quantity.data),
                 'pending'
             )
