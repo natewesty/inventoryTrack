@@ -1,13 +1,25 @@
 from flask import Flask, request, jsonify, render_template, make_response, redirect, url_for, session
 from authlib.integrations.flask_client import OAuth
-from order_processing import process_order
-from product_processing import process_product
-from db_interact import query_data
+from scripts.order_processing import process_order
+from scripts.product_processing import process_product
+from scripts.db_interact import query_data, transfer_inventory
+from datetime import datetime
 import logging, os
 import pandas as pd
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, DateField, IntegerField, FieldList, FormField
+from wtforms.validators import DataRequired, NumberRange
 
 app = Flask(__name__)
 app.secret_key = 'secret_key'
+
+# Set up forms
+
+class TransferForm(FlaskForm):
+    from_location = SelectField('From', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')])
+    to_location = SelectField('To', choices=[('Groskopf', 'Groskopf'), ('Copper Peak', 'Copper Peak'), ('Donum', 'Donum')])
+    sku = StringField('SKU', validators=[DataRequired()])
+    quantity = IntegerField('Quantity', validators=[DataRequired(), NumberRange(min=1)])
 
 # Set up logging
 logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -41,7 +53,7 @@ def handle_webhook():
         }
         process_function = process_functions.get(data.get('object'))
         if process_function:
-            process_function(data)
+            process_function(data, engine)  # Pass the engine to process functions
         return jsonify({'message': 'Received'}), 200
     except Exception as e:
         logging.error(f"Error handling webhook: {e}")
@@ -56,18 +68,18 @@ def authorize():
     token = google.authorize_access_token()
     resp = google.get('userinfo')
     user_info = resp.json()
-    # Do something with the token and profile
     session['user'] = user_info
     return redirect('/')
 
 @app.route('/')
 def home():
+    form = TransferForm()  # Create an instance of TransferForm
     try:
         disp_statement = 'SELECT * FROM "InventoryDisp"'
-        data, metadata = query_data(disp_statement)
-        df = pd.DataFrame(data, columns=[field.name for field in metadata.row_type.fields])
-        table = df.to_html()
-        return render_template('index.html', table=table)
+        data = query_data(disp_statement)  # Pass the engine to query_data
+        df = pd.DataFrame(data)
+        products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
+        return render_template('index.html', products=products, form=form)  # Pass the form to the template
     except Exception as e:
         return f"An error occurred: {e}"
 
@@ -75,8 +87,8 @@ def home():
 def export():
     try:
         disp_statement = 'SELECT * FROM "Inventory"'
-        data, metadata = query_data(disp_statement)
-        df = pd.DataFrame(data, columns=[field.name for field in metadata.row_type.fields])
+        data = query_data(disp_statement)  
+        df = pd.DataFrame(data)
         csv = df.to_csv(index=False)
         response = make_response(csv)
         response.headers["Content-Disposition"] = "attachment; filename=inventory.csv"
@@ -84,6 +96,25 @@ def export():
         return response
     except Exception as e:
         return f"An error occurred: {e}"
+    
+@app.route('/transfer', methods=['POST'])
+def transfer():
+    form = TransferForm(request.form)
+   # if form.validate_on_submit():
+    transfer = (
+        form.sku.data,
+        form.from_location.data,
+        form.to_location.data,
+        datetime.today(),
+        int(form.quantity.data),
+    )
+    transfer_inventory(*transfer)  # Pass the engine to transfer_inventory
+    return redirect(url_for('home'))
+   # return render_template('index.html', form=form)
+   
+   # BYPASSING FORM VALIDATION
+
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
+    port = int(os.environ.get('PORT', 8080))
+    app.run(debug=True, host='0.0.0.0', port=port)

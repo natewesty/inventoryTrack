@@ -86,3 +86,9 @@ Still Needs to be Done:
 - Test webhook capture / logistical processising functionality (Post functionality OFF)
 - Push to PROD
 
+*******************************************************************************
+
+docker build -t gcr.io/inventory-project-412117/inventorytrack .
+docker push gcr.io/inventory-project-412117/inventorytrack
+gcloud run deploy gcr.io/inventory-project-412117/inventorytrack
+

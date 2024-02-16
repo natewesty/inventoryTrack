@@ -1,40 +1,82 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Inventory</title>
-    <!-- Import Materialize CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f8f9fa;
-            font-family: Roboto, sans-serif;
-        }
-        .container {
-            text-align: center;
-        }
-        .btn {
-            background-color: #ddbb31;
-        }
-        h1 {
-            color: #343a40;
-            margin-bottom: 30px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="/export" class="btn">Export to CSV</a>
-        <h1>Inventory</h1>
-        <table class="striped highlight">
-            {{ table|safe }}
-        </table>
-    </div>
-    <!-- Import Materialize JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-</body>
+   <head>
+      <meta charset = "utf-8">
+      <meta name = "viewport" content = "width = device-width, initial-scale = 1">
+      <title>Donum Inventory Tracker</title>
+      <link rel = "stylesheet" href = "https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.min.css">
+   </head>
+   
+   <body>
+      <section class = "section">
+         <div class = "container">
+            <h1 class = "title has-text-centered">Inventory</h1>
+            <div class="columns is-centered">
+               <div class="column is-half">
+                  <table class = "table is-bordered">
+                     <thead>
+                        <tr>
+                           <th>SKU</th>
+                           <th>Label</th>
+                           <th>Groskopf</th>
+                           <th>Copper Peak</th>
+                           <th>Donum</th>
+                        </tr>
+                     </thead>
+                     
+                     <tbody>
+                        {% for product in products %}
+                        <tr>
+                           <td>{{ product.sku }}</td>
+                           <td>{{ product.label }}</td>
+                           <td>{{ product.bottles_groskopf }}</td>
+                           <td>{{ product.bottles_copperpeak }}</td>
+                           <td>{{ product.bottles_donum }}</td>
+                        </tr>
+                        {% endfor %}
+                     </tbody>
+                  </table>
+
+                  <form action="/export" method="get">
+                     <button class="button is-primary">Export to CSV</button>
+                  </form>
+               </div>
+            <div class="column is-half">
+                <h2 class="title is-4 has-text-centered">Transfer Items</h2>
+                <form action="/transfer" method="post" id="transferForm">
+                    <!-- CSRF token -->
+                    {{ form.csrf_token }}
+                    <div class="field">
+                        <label class="label">From</label>
+                        <div class="control">
+                            <div class="select">
+                                {{ form.from_location(class="select") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">To</label>
+                        <div class="control">
+                            <div class="select">
+                                {{ form.to_location(class="select") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            {{ form.sku(class="input", placeholder="Enter SKU") }}
+                            {{ form.quantity(class="input", placeholder="Enter Quantity") }}
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <button class="button is-primary">Transfer</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            </div>
+         </div>
+      </section>
+   </body>
 </html>
