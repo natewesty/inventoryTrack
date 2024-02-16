@@ -1,126 +1,125 @@
 import os, schedule, time
 from datetime import datetime
-from google.cloud import spanner
+import logging
+import json
+import sqlalchemy
+from sqlalchemy import text
+from google.cloud.sql.connector import Connector
+
+# Configure logging
+logging.basicConfig(filename='db_interact.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def connect_with_connector() -> sqlalchemy.engine.base.Engine:
+    instance_connection_name = 'inventory-project-412117:us-west1:inventory'
+    db_user = 'cloud_worker'
+    db_pass = 'Ux2_Y:)yssA{lA^N'
+    db_name = 'inventory_db'
+
+    # Create a Connector object
+    connector = Connector()
+
+    def getconn() -> sqlalchemy.engine.base.Connection:
+        conn = connector.connect(
+            instance_connection_name,
+            "pg8000",
+            user=db_user,
+            password=db_pass,
+            db=db_name
+        )
+        return conn
+
+    pool = sqlalchemy.create_engine(
+        "postgresql+pg8000://",
+        creator=getconn,
+    )
+    return pool
+
+# Create a connection engine
+engine = connect_with_connector()
 
 def upload_data(dml_statement, params=None):
-    spanner_client = spanner.Client()
-    instance_id = 'inventory'
-    instance = spanner_client.instance(instance_id)
-    database_id = 'inventory_db'
-    database = instance.database(database_id)
-    
-    # Define param_types based on params
-    param_types = {}
-    param_mapping = {}
-    if params is not None:
-        for i, (key, value) in enumerate(params.items()):
-            param_name = f'p{i+1}'
-            param_mapping[param_name] = value
-            if isinstance(value, str):
-                param_types[param_name] = spanner.param_types.STRING
-            elif isinstance(value, int):
-                param_types[param_name] = spanner.param_types.INT64
-            elif isinstance(value, float):
-                param_types[param_name] = spanner.param_types.FLOAT64
-            elif isinstance(value, datetime):
-                param_types[param_name] = spanner.param_types.TIMESTAMP
-            # Add more types as needed
+    try:
+        # Establish a connection from the engine
+        with engine.connect() as connection:
+            # Begin a transaction
+            with connection.begin() as transaction:
+                # Execute the DML statement
+                result = connection.execute(dml_statement, params)
+                logging.info(f"{result.rowcount} record(s) updated.")
+                
+                # Commit the transaction to ensure changes are saved
+                transaction.commit()
+                
+                return result.rowcount > 0  # Return True if data was written, False otherwise
+    except Exception as e:
+        logging.error(f"Unexpected error executing DML statement: {e}")
+    return False  # Return False if an error occurred
 
-    # Replace original param names with 'p1', 'p2', etc. in the DML statement
-    for original, replacement in param_mapping.items():
-        dml_statement = dml_statement.replace(f'@{original}', f'@{replacement}')
-
-    database.run_in_transaction(lambda transaction: transaction.execute_update(dml_statement, params=param_mapping, param_types=param_types))
 
 def query_data(select_statement, params=None):
-    spanner_client = spanner.Client()
-    instance_id = 'inventory'
-    instance = spanner_client.instance(instance_id)
-    database_id = 'inventory_db'
-    database = instance.database(database_id)
-    
-    with database.snapshot() as snapshot:
-        result_set = snapshot.execute_sql(select_statement, params=params)
-        rows = list(result_set)
-        metadata = result_set.metadata
-    
-    return rows, metadata
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(sqlalchemy.text(select_statement), params)
+            rows = result.fetchall()
+        return rows
+    except Exception as e:
+        logging.error(f"Error executing SELECT statement: {e}")
+        return None
 
 def get_ledger_data(order_id):
-    select_statement = "SELECT fulfillment_status FROM 'InventoryLedger' WHERE order_id = @order_id"
-    results = query_data(select_statement, params={"order_id": order_id})
-    if results:
-        return results[0]
-    else:
+    try:
+        select_statement = text('SELECT fulfillment_status FROM "InventoryLedger" WHERE order_id = :order_id')
+        results = query_data(select_statement, params=(order_id,))
+        if results:
+            return results[0][0]  # Assuming fulfillment_status is the first column
+        else:
+            return None
+    except Exception as e:
+        logging.error(f"Error getting ledger data: {e}")
         return None
 
 def get_ship_location(delivery):
-    select_statement = "SELECT id FROM 'InventoryLocations' WHERE fulfillment_type = @delivery"
-    results = query_data(select_statement, params={"delivery": delivery})
-    if results:
-        return results[0]
-    else:
+    try:
+        select_statement = text('SELECT id FROM "InventoryLocations" WHERE fulfillment_type = :fulfillment_type')
+        results = query_data(select_statement, params=(delivery,))
+        if results:
+            return results[0][0]  # Assuming id is the first column
+        else:
+            return None
+    except Exception as e:
+        logging.error(f"Error getting ship location: {e}")
         return None
 
-def update_disp_donum(sku, quantity):
-    disp_statement = 'UPDATE "InventoryDisp" SET bottles_donum = bottles_donum - @quantity WHERE sku = @sku'
-    upload_data(disp_statement, params={"sku": sku, "quantity": quantity})
+def update_disp(sku, quantity, location):
+    try:
+        disp_statement = text(f'UPDATE "InventoryDisp" SET {location} = {location} - :quantity WHERE sku = :sku')
+        upload_data(disp_statement, params={"quantity": quantity, "sku": sku})
+    except Exception as e:
+        logging.error(f"Error updating disp: {e}")
 
-def update_disp_copperpeak(sku, quantity):
-    disp_statement = 'UPDATE "InventoryDisp" SET bottles_copperpeak = bottles_copperpeak - @quantity WHERE sku = @sku'
-    upload_data(disp_statement, params={"sku": sku, "quantity": quantity})
+# Define the location aliases
+location_aliases = {
+    'Donum': 'bottles_donum',
+    'Copper Peak': 'bottles_copperpeak',
+    'Groskopf': 'bottles_groskopf',
+    # Add more aliases as needed
+}
 
-def update_disp_groskopf(sku, quantity):
-    disp_statement = 'UPDATE "InventoryDisp" SET bottles_groskopf = bottles_groskopf - @quantity WHERE sku = @sku'
-    upload_data(disp_statement, params={"sku": sku, "quantity": quantity})
-
-def schedule_transfer(sku, from_location, to_location, transfer_date, quantity):
-    ledger_statement = 'INSERT INTO "TransferLedger" (sku, from_location, to_location, transfer_date, quantity, status) VALUES (@sku, @from_location, @to_location, @transfer_date, @quantity, "pending")'
-    upload_data(ledger_statement, params={"sku": sku, "from_location": from_location, "to_location": to_location, "transfer_date": transfer_date, "quantity": quantity})
-    
 def transfer_inventory(sku, from_location, to_location, transfer_date, quantity):
-    # Update the inventory at the from_location
-    if from_location == 'Donum':
-        update_disp_donum(sku, quantity)
-    elif from_location == 'Copper Peak':
-        update_disp_copperpeak(sku, quantity)
-    elif from_location == 'Groskopf':
-        update_disp_groskopf(sku, quantity)
+    try:
+        # Convert the locations to their aliases
+        from_location_alias = location_aliases.get(from_location, from_location)
+        to_location_alias = location_aliases.get(to_location, to_location)
+        
+        # Update the inventory at the from_location
+        update_disp(sku, quantity, from_location_alias)
+        
+        # Update the inventory at the to_location
+        update_disp(sku, -quantity, to_location_alias)
+        
+        # Record the transfer in the InventoryLedger
+        ledger_statement = text('INSERT INTO "TransferLedger" (sku, from_location, to_location, transfer_date, quantity) VALUES (:sku, :from_location, :to_location, :transfer_date, :quantity);')
+        upload_data(ledger_statement, params=(sku, from_location, to_location, transfer_date, quantity))
+    except Exception as e:
+        logging.error(f"Error transferring inventory: {e}")
 
-    # Update the inventory at the to_location
-    if to_location == 'Donum':
-        disp_statement = 'UPDATE "InventoryDisp" SET bottles_donum = bottles_donum + @quantity WHERE sku = @sku'
-    elif to_location == 'Copper Peak':
-        disp_statement = 'UPDATE "InventoryDisp" SET bottles_copperpeak = bottles_copperpeak + @quantity WHERE sku = @sku'
-    elif to_location == 'Groskopf':
-        disp_statement = 'UPDATE "InventoryDisp" SET bottles_groskopf = bottles_groskopf + @quantity WHERE sku = @sku'
-
-    upload_data(disp_statement, params={"sku": sku, "quantity": quantity})
-
-    # Record the transfer in the InventoryLedger
-    ledger_statement = 'INSERT INTO "TransferLedger" (sku, from_location, to_location, transfer_date, quantity) VALUES (@sku, @from_location, @to_location, @transfer_date, @quantity)'
-    upload_data(ledger_statement, params={"sku": sku, "from_location": from_location, "to_location": to_location, "transfer_date": transfer_date, "quantity": quantity})
-
-def process_transfer(transfer):
-    # Process the transfer if the date is on or before the current date
-    sku, from_location, to_location, transfer_date, quantity, status = transfer
-    if transfer_date <= datetime.today():
-        transfer_inventory(sku, from_location, to_location, transfer_date, quantity)
-
-        # Update the transfer status
-        update_statement = 'UPDATE "TransferLedger" SET status = "processed" WHERE sku = @sku AND from_location = @from_location AND to_location = @to_location AND transfer_date = @transfer_date AND quantity = @quantity'
-        upload_data(update_statement, params={"sku": sku, "from_location": from_location, "to_location": to_location, "transfer_date": transfer_date, "quantity": quantity})
-
-def checkrun_transfers():
-    # Get all pending transfers that are due to be processed
-    select_statement = 'SELECT * FROM "TransferLedger" WHERE status = "pending" AND transfer_date <= @today'
-    transfers, _ = query_data(select_statement, params={"today": datetime.today().strftime("%Y-%m-%d")})
-
-    for transfer in transfers:
-        # Process the transfer
-        sku, from_location, to_location, transfer_date, quantity, status = transfer
-        transfer_inventory(sku, from_location, to_location, transfer_date, quantity)
-
-        # Update the transfer status
-        update_statement = 'UPDATE "TransferLedger" SET status = "processed" WHERE sku = @sku AND from_location = @from_location AND to_location = @to_location AND transfer_date = @transfer_date AND quantity = @quantity'
-        upload_data(update_statement, params={"sku": sku, "from_location": from_location, "to_location": to_location, "transfer_date": transfer_date, "quantity": quantity})

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template, make_response, redir
 from authlib.integrations.flask_client import OAuth
 from scripts.order_processing import process_order
 from scripts.product_processing import process_product
-from scripts.db_interact import query_data, schedule_transfer, process_transfer
+from scripts.db_interact import query_data, transfer_inventory
 from datetime import datetime
 import logging, os
 import pandas as pd
@@ -53,7 +53,7 @@ def handle_webhook():
         }
         process_function = process_functions.get(data.get('object'))
         if process_function:
-            process_function(data)
+            process_function(data, engine)  # Pass the engine to process functions
         return jsonify({'message': 'Received'}), 200
     except Exception as e:
         logging.error(f"Error handling webhook: {e}")
@@ -68,7 +68,6 @@ def authorize():
     token = google.authorize_access_token()
     resp = google.get('userinfo')
     user_info = resp.json()
-    # Do something with the token and profile
     session['user'] = user_info
     return redirect('/')
 
@@ -77,8 +76,8 @@ def home():
     form = TransferForm()  # Create an instance of TransferForm
     try:
         disp_statement = 'SELECT * FROM "InventoryDisp"'
-        data, metadata = query_data(disp_statement)
-        df = pd.DataFrame(data, columns=[field.name for field in metadata.row_type.fields])
+        data = query_data(disp_statement)  # Pass the engine to query_data
+        df = pd.DataFrame(data)
         products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
         return render_template('index.html', products=products, form=form)  # Pass the form to the template
     except Exception as e:
@@ -88,8 +87,8 @@ def home():
 def export():
     try:
         disp_statement = 'SELECT * FROM "Inventory"'
-        data, metadata = query_data(disp_statement)
-        df = pd.DataFrame(data, columns=[field.name for field in metadata.row_type.fields])
+        data = query_data(disp_statement)  
+        df = pd.DataFrame(data)
         csv = df.to_csv(index=False)
         response = make_response(csv)
         response.headers["Content-Disposition"] = "attachment; filename=inventory.csv"
@@ -98,26 +97,23 @@ def export():
     except Exception as e:
         return f"An error occurred: {e}"
     
-@app.route('/transfer', methods=['GET', 'POST'])
+@app.route('/transfer', methods=['POST'])
 def transfer():
     form = TransferForm(request.form)
-    if request.method == 'POST':
-        if form.validate():
-            transfer = (
-                form.sku.data,
-                form.from_location.data,
-                form.to_location.data,
-                int(form.quantity.data),
-                'pending'
-            )
-            schedule_transfer(*transfer)
-            process_transfer(transfer)
-            return redirect(url_for('home'))
-        else:
-            # Form data is invalid, return specific error messages
-            error_messages = [f"{field}: {error}" for field, errors in form.errors.items() for error in errors]
-            return "Error: " + ", ".join(error_messages)
-    return render_template('transfer.html', form=form)  # Pass the form to the template
+   # if form.validate_on_submit():
+    transfer = (
+        form.sku.data,
+        form.from_location.data,
+        form.to_location.data,
+        datetime.today(),
+        int(form.quantity.data),
+    )
+    transfer_inventory(*transfer)  # Pass the engine to transfer_inventory
+    return redirect(url_for('home'))
+   # return render_template('index.html', form=form)
+   
+   # BYPASSING FORM VALIDATION
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
