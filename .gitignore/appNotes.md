@@ -1,74 +1,26 @@
-Inventory App Notes:
+Different end points for orders:
 
-DB: 
+Purchase and decriment
+	- Immediate Inven / Disp / Inven Ledg update
+Purchase and await pickup
+	- Immediate Inven / Inven Ledg update + Fulfill tripped Inven / Disp / Inven Ledg update
+Purchase and ship
+	- Immediate Inven / Inven Ledg update + Fulfill tripped Inven / Disp / Inven Ledg update
+Unfulfilled Refund
+	- Immediate Inven / Inven Ledge update
+Fulfilled Refund 
+	- Break
+Exchange
+	- Immediate Inven / Inven Ledge / Disp update x 2
+Pickup to Ship
+	- Immediate Inven / Inven Ledge update x 2 + Fulfill tripped Inven / Disp / Inven Ledge update
 
-Google Sheet via AppSheet
 
-Functional Triggers: 
+Functional script needs:
 
-Webhooks from C7
-User inputs (spot-to-spot transfers/non-C7 sales actions/etc.)
+Physical Movement - updates Inventory, InventoryLedger & InventoryDisp as fulfilled
 
-Action Ledger Structure:
-
-ActionID(auto-generated)/order#/inventory location/sku/quant/action
-
-Inventory Tracker Structure:
-
-Inventory location/sku/physical amount available/debt amount (awaiting fulfillment)/need amount (physical - debt *highlighted if overdrawn*)
-
-Proposed Step-By-Step Functionality:
-
-C7 ORDERS
-
-#Input Inventory Actions To Ledger
-Receive webhook from C7 -> pull inventory location/order#/sku/quant/process actions (sale/refund/restock/pickup-to-ship/etc.) -> store as "inventory action" line in Cloud Spanner DB ledger -> loop until all products are accounted for
-
-#Alter Stored Totals From Actions
-ID location to add/decriment via ledger entry -> find relevant sku in ID'd location -> determine action to take place via ledger entry -> perform action on inventory total (add/decriment) -> (publish new total to UI for reference OR push new inventory total back to C7)
-
-USER INPUTS
-
-#Input Inventory Actions To Ledger
-User inputs inventory action into UI (locations/skus/quants/action) -> separate larger user input into line items for each product -> iterate group action details onto each line item (locations/action), store line item as "inventory action" line in Cloud Spanner DB ledger -> loop until all products are accounted for
-
-#Alter Stored Totals From Actions
-ID location to add/decriment via ledger entry -> find relevant sku in ID'd location -> determine action to take place via ledger entry -> perform action on inventory total (add/decriment) -> (publish new total to UI for reference OR push new inventory total back to C7)
-
-Questions That Still Need Answers:
-
-Should this function as a standalone app, or be an augmentation of current C7 processing?
-
-	Preference would be to run this as an augmentation
-		- Removes the need for front-end developement
-		- Focal customer would then be C7 (sell code/functionality fix as a whole) vs individual wineries
-		- Upfront payoff vs long term subscription income?
-
-What are the barriers to scalability?
-
-	Data storage & processing cost
-	Human Factor - would require an initial human input at opt-in & potentially an element of customer service for issues
-	Skillset - I can make this... but it's going to take me forever to learn everything from the ground up
-
-What would the upfront cost be to outsource the buildout?
-
-Should this have an analytics component?
-
-	- Forecasted sales to suggest restock amount
-	- Outflow rate 
-	- Product ranking by sales
-
-Can we automate the entire process?
-
-	- Default par levels at each location to start
-	- Updated par levels in conjunction with sales analytics (most likely outflow rate per week)
-	- User IDs storage -> winery transfer schedule
-
-HOW DO WE ACCOUNT FOR EDGE CASES
-
-	- Pickup to ship
-	- Refund but not returned to inventory
-	- Write off bottles (TR pours/breakage/gifting/donation)
+Sell & Sleep - updates Inventory & Inventory Disp and awaits fulfillment trigger
 
 *******************************************************************************
 

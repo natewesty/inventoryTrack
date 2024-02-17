@@ -10,10 +10,10 @@ from google.cloud.sql.connector import Connector
 logging.basicConfig(filename='db_interact.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def connect_with_connector() -> sqlalchemy.engine.base.Engine:
-    instance_connection_name = 'inventory-project-412117:us-west1:inventory'
-    db_user = 'cloud_worker'
-    db_pass = 'Ux2_Y:)yssA{lA^N'
-    db_name = 'inventory_db'
+    instance_connection_name = os.environ.get("INSTANCE_CONNECTION_NAME")
+    db_user = os.environ.get("DB_USER")
+    db_pass = os.environ.get("DB_PASS")
+    db_name = os.environ.get("DB_NAME")
 
     # Create a Connector object
     connector = Connector()
@@ -80,8 +80,8 @@ def get_ledger_data(order_id):
 
 def get_ship_location(delivery):
     try:
-        select_statement = text('SELECT id FROM "InventoryLocations" WHERE fulfillment_type = :fulfillment_type')
-        results = query_data(select_statement, params=(delivery,))
+        select_statement = text('SELECT id FROM "InventoryLocations" WHERE fulfillment_type = :delivery')
+        results = query_data(select_statement, params=(delivery))
         if results:
             return results[0][0]  # Assuming id is the first column
         else:
@@ -90,7 +90,7 @@ def get_ship_location(delivery):
         logging.error(f"Error getting ship location: {e}")
         return None
 
-def update_disp(sku, quantity, location):
+def update_disp(sku, quantity, location): ### PENDING REMOVAL AND REPLACEMENT VIA DATA_PROCESSING ###
     try:
         disp_statement = text(f'UPDATE "InventoryDisp" SET {location} = {location} - :quantity WHERE sku = :sku')
         upload_data(disp_statement, params={"quantity": quantity, "sku": sku})
