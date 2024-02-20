@@ -4,19 +4,21 @@ import logging
 import json
 import sqlalchemy
 from sqlalchemy import text
-from google.cloud.sql.connector import Connector
+from google.cloud.sql.connector import Connector, IPTypes
 
 # Configure logging
 logging.basicConfig(filename='db_interact.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def connect_with_connector() -> sqlalchemy.engine.base.Engine:
-    instance_connection_name = os.environ.get("INSTANCE_CONNECTION_NAME")
-    db_user = os.environ.get("DB_USER")
-    db_pass = os.environ.get("DB_PASS")
-    db_name = os.environ.get("DB_NAME")
-
+    instance_connection_name = 'inventory-project-412117:us-west1:inventory'
+    db_user = 'cloud_worker'
+    db_pass = 'Ux2_Y:)yssA{lA^N'
+    db_name = 'inventory_db'
+    
+    ip_type = IPTypes.PUBLIC
+    
     # Create a Connector object
-    connector = Connector()
+    connector = Connector(ip_type)
 
     def getconn() -> sqlalchemy.engine.base.Connection:
         conn = connector.connect(
@@ -39,18 +41,13 @@ engine = connect_with_connector()
 
 def upload_data(dml_statement, params=None):
     try:
-        # Establish a connection from the engine
-        with engine.connect() as connection:
-            # Begin a transaction
-            with connection.begin() as transaction:
-                # Execute the DML statement
-                result = connection.execute(dml_statement, params)
-                logging.info(f"{result.rowcount} record(s) updated.")
+        # Begin a transaction
+        with engine.begin() as connection:
+            # Execute the DML statement
+            result = connection.execute(dml_statement, params)
+            logging.info(f"{result.rowcount} record(s) updated.")
                 
-                # Commit the transaction to ensure changes are saved
-                transaction.commit()
-                
-                return result.rowcount > 0  # Return True if data was written, False otherwise
+            return result.rowcount > 0  # Return True if data was written, False otherwise
     except Exception as e:
         logging.error(f"Unexpected error executing DML statement: {e}")
     return False  # Return False if an error occurred
@@ -69,7 +66,7 @@ def query_data(select_statement, params=None):
 def get_ledger_data(order_id):
     try:
         select_statement = text('SELECT fulfillment_status FROM "InventoryLedger" WHERE order_id = :order_id')
-        results = query_data(select_statement, params=(order_id,))
+        results = query_data(select_statement, params={"order_id": order_id})
         if results:
             return results[0][0]  # Assuming fulfillment_status is the first column
         else:
@@ -80,8 +77,8 @@ def get_ledger_data(order_id):
 
 def get_ship_location(delivery):
     try:
-        select_statement = text('SELECT id FROM "InventoryLocations" WHERE fulfillment_type = :delivery')
-        results = query_data(select_statement, params=(delivery))
+        select_statement = text('SELECT name FROM "InventoryLocations" WHERE fulfillment_type = :delivery')
+        results = query_data(select_statement, params={"fulfillment_type": delivery})
         if results:
             return results[0][0]  # Assuming id is the first column
         else:
@@ -105,7 +102,7 @@ location_aliases = {
     # Add more aliases as needed
 }
 
-def transfer_inventory(sku, from_location, to_location, transfer_date, quantity):
+def transfer_inventory(sku, from_location, to_location, quantity):
     try:
         # Convert the locations to their aliases
         from_location_alias = location_aliases.get(from_location, from_location)
@@ -118,8 +115,8 @@ def transfer_inventory(sku, from_location, to_location, transfer_date, quantity)
         update_disp(sku, -quantity, to_location_alias)
         
         # Record the transfer in the InventoryLedger
-        ledger_statement = text('INSERT INTO "TransferLedger" (sku, from_location, to_location, transfer_date, quantity) VALUES (:sku, :from_location, :to_location, :transfer_date, :quantity);')
-        upload_data(ledger_statement, params=(sku, from_location, to_location, transfer_date, quantity))
+        ledger_statement = text('INSERT INTO "TransferLedger" (sku, from_location, to_location, quantity) VALUES (:sku, :from_location, :to_location, :quantity);')
+        upload_data(ledger_statement, params={"sku": sku, "from_location": from_location_alias, "to_location": to_location_alias, "quantity": quantity})
     except Exception as e:
         logging.error(f"Error transferring inventory: {e}")
 

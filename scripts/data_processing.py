@@ -1,7 +1,7 @@
 import sqlalchemy
 import logging
 from sqlalchemy import text
-from db_interact import upload_data, query_data, get_ledger_data, get_ship_location, update_disp
+from .db_interact import upload_data, query_data, get_ledger_data, get_ship_location, update_disp
 
 ######## NEED TO UPDATE DB TO REFLECT NEW TABLES ########
     

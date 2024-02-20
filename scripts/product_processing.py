@@ -27,20 +27,20 @@ def create_product(data):
             for i in bundleItems:
                 bundleItem = extract_data(item, ['sku', 'quantity'])
                 dml_statement = text(f'INSERT INTO "Bundles" (sku{b}, quantity{b}, bundle_sku) VALUES (:sku, :quantity, :bundle_sku);')
-                upload_data(dml_statement, params={bundleItem[0], bundleItem[1], bundle_sku})
+                upload_data(dml_statement, params={"sku": bundleItem[0], "quantity":bundleItem[1], "bundle_sku": bundle_sku})
                 b += 1
         else:
             variants = payload.get('variants')
             for variant in variants:
                 new_item = extract_data(variant, ['id', 'sku', 'title'])
                 query_statement = text(f'SELECT id FROM "Products" WHERE id = :id')
-                result = query_data(query_statement, params={new_item[0]})
+                result = query_data(query_statement, params={"id":new_item[0]})
                 if result:
                     logging.error(f"Product {new_item[0]} already exists")
                     return
                 else:
                     dml_statement = text(f'INSERT INTO "Products" (id, sku, label) VALUES (id, sku, label);')
-                    upload_data(dml_statement, params={new_item[0], new_item[1], new_item[2]})
+                    upload_data(dml_statement, params={"id": new_item[0], "sku": new_item[1], "label": new_item[2]})
     except Exception as e:
         logging.error(f"Error creating product: {e}")
 
@@ -53,12 +53,12 @@ def update_product(data):
             for item in bundleItems:
                 bundleItem = extract_data(item, ['sku', 'quantity'])
                 dml_statement = text(f'UPDATE "Bundles" SET quantity = :quantity WHERE sku = :sku AND bundle_sku = :bundle_sku;')
-                upload_data(dml_statement, params={bundleItem[1], bundleItem[0], bundle_sku})
+                upload_data(dml_statement, params={"quantity": bundleItem[1], "sku": bundleItem[0], "bundle_sku": bundle_sku})
         else:
             variants = payload.get('variants')
             for variant in variants:
                 updated_item = extract_data(variant, ['id', 'sku', 'title'])
                 dml_statement = text(f'UPDATE "Products" SET sku = :sku, label = :label WHERE id = :id;')
-                upload_data(dml_statement, params={updated_item[1], updated_item[2], updated_item[0]})
+                upload_data(dml_statement, params={"sku": updated_item[1], "label": updated_item[2], "id": updated_item[0]})
     except Exception as e:
         logging.error(f"Error updating product: {e}")

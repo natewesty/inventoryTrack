@@ -100,17 +100,17 @@ def export():
 @app.route('/transfer', methods=['POST'])
 def transfer():
     form = TransferForm(request.form)
-   # if form.validate_on_submit():
-    transfer = (
-        form.sku.data,
-        form.from_location.data,
-        form.to_location.data,
-        datetime.today(),
-        int(form.quantity.data),
-    )
-    transfer_inventory(*transfer)  # Pass the engine to transfer_inventory
-    return redirect(url_for('home'))
-   # return render_template('index.html', form=form)
+    if form.validate_on_submit():
+        transfer = (
+            form.sku.data,
+            form.from_location.data,
+            form.to_location.data,
+            int(form.quantity.data),
+        )
+        transfer_inventory(*transfer)
+        return redirect(url_for('home'))
+    else:
+        return render_template('index.html', form=form)
    
    # BYPASSING FORM VALIDATION
 
