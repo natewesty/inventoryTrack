@@ -2,8 +2,6 @@ import sqlalchemy
 import logging
 from sqlalchemy import text
 from .db_interact import upload_data, query_data, get_ledger_data, get_ship_location, update_disp
-
-######## NEED TO UPDATE DB TO REFLECT NEW TABLES ########
     
 # Define the location aliases
 location_aliases = {
@@ -103,4 +101,16 @@ def bundle_process(sku, quantity, orderNumber, del_method):
 
     except Exception as e:
         logging.error(f"Error in process_bundle: {e}")
+        
+def track_check(sku):
+    try:  
+        track_statement = text(f'SELECT "track" FROM "Products" WHERE sku = :sku')
+        track_data = query_data(track_statement, params={"sku": sku})
+          
+        if track_data == 'NoTrack':
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"Error in track_check: {e}")
         

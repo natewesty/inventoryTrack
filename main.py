@@ -76,7 +76,7 @@ def home():
     form = TransferForm()  # Create an instance of TransferForm
     try:
         disp_statement = 'SELECT * FROM "InventoryDisp"'
-        data = query_data(disp_statement)  # Pass the engine to query_data
+        data = query_data(disp_statement)  
         df = pd.DataFrame(data)
         products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
         return render_template('index.html', products=products, form=form)  # Pass the form to the template

@@ -2,7 +2,8 @@ import logging
 import sqlalchemy
 from sqlalchemy import text
 from .db_interact import get_ledger_data, get_ship_location, query_data
-from .data_processing import phys_move, sell_sleep, sell_wake, order_null, extract_data, bundle_check, bundle_process
+from .data_processing import phys_move, sell_sleep, sell_wake, order_null, extract_data, bundle_check, bundle_process, track_check
+
 
 def process_order(data):
     try:
@@ -30,7 +31,9 @@ def create_order(data):
             products = payload.get('products')
             for product in products:
                 product_details = extract_data(product.get('product'), ['sku', 'quantity'])
-                if bundle_check(*product_details, *order_details) == True:
+                if track_check(sku) == True:
+                    continue
+                elif bundle_check(*product_details, *order_details) == True:
                     bundle_process(*product_details, *order_details)
                 elif order_details[1] == 'Carry Out':
                     phys_move(product_details[0], 'Donum', product_details[1], order_details[0], order_details[1]) 
@@ -63,10 +66,11 @@ def update_order(data):
                 products = payload.get('products')
                 for product in products:
                     product_details = extract_data(product.get('product'), ['sku', 'quantity'])
-                    # Check for bundles and process accordingly
-                    if bundle_check(*product_details, order_details[0], order_details[1]) == True:
-                        bundle_process(*product_details, order_details[0], order_details[1])
+                    if track_check(sku) == True:
                         continue
+                    # Check for bundles and process accordingly
+                    elif bundle_check(*product_details, order_details[0], order_details[1]) == True:
+                        bundle_process(*product_details, order_details[0], order_details[1])
                     # Process non-bundle inventory moves
                     if order_details[2] == 'No Fulfillment Required':
                         location = get_ship_location(order_details[1])
@@ -91,9 +95,10 @@ def special_order(data):
             product_details = extract_data(product.get('product'), ['sku', 'quantity'])
             location = get_ship_location(order_details[1])
             # Check for bundles and process accordingly
+            if track_check(sku) == True:
+                continue
             if bundle_check(*product_details, order_details[0], order_details[1]) == True:
                 bundle_process(*product_details, order_details[0], order_details[1])
-                continue
             # Process non-bundle inventory moves
             if order_details[3] == 'Refund' and order_details[2] == 'Not Fulfilled':
                 sell_wake(product_details[0], location, product_details[1], order_details[0])
