@@ -53,7 +53,7 @@ def handle_webhook():
         }
         process_function = process_functions.get(data.get('object'))
         if process_function:
-            process_function(data, engine)  # Pass the engine to process functions
+            process_function(data)
         return jsonify({'message': 'Received'}), 200
     except Exception as e:
         logging.error(f"Error handling webhook: {e}")
@@ -78,8 +78,22 @@ def home():
         disp_statement = 'SELECT * FROM "InventoryDisp"'
         data = query_data(disp_statement)  
         df = pd.DataFrame(data)
+        df = df.sort_values('sku')  # Sort the DataFrame by the 'sku' column
         products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
         return render_template('index.html', products=products, form=form)  # Pass the form to the template
+    except Exception as e:
+        return f"An error occurred: {e}"
+    
+@app.route('/search')
+def search():
+    form = TransferForm()  # Create an instance of TransferForm
+    sku = request.args.get('sku')  # Get the SKU from the request
+    try:
+        search_statement = f'SELECT * FROM "InventoryDisp" WHERE sku = :sku;'
+        data = query_data(search_statement, params={'sku': sku})  
+        df = pd.DataFrame(data)
+        matching_products = df.to_dict('records')  # Convert DataFrame to list of dictionaries
+        return render_template('index.html', products=matching_products, form=form)  # Pass the form to the template
     except Exception as e:
         return f"An error occurred: {e}"
 

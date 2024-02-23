@@ -4,6 +4,8 @@ from sqlalchemy import text
 from .db_interact import get_ledger_data, get_ship_location, query_data
 from .data_processing import phys_move, sell_sleep, sell_wake, order_null, extract_data, bundle_check, bundle_process, track_check
 
+# Log issues to main log
+logger = logging.getLogger(__name__)
 
 def process_order(data):
     try:
@@ -28,13 +30,13 @@ def create_order(data):
         else:
             # Process inventory moves by sku
             order_details = extract_data(payload, ['orderNumber', 'orderDeliveryMethod'])
-            products = payload.get('products')
-            for product in products:
-                product_details = extract_data(product.get('product'), ['sku', 'quantity'])
-                if track_check(sku) == True:
+            items = payload.get('items')
+            for item in items:
+                product_details = extract_data(item.get('item'), ['sku', 'quantity'])
+                if track_check(product_details[0]) == True:
                     continue
-                elif bundle_check(*product_details, *order_details) == True:
-                    bundle_process(*product_details, *order_details)
+                elif bundle_check(product_details[0], product_details[1], order_details[0], order_details[1]) == True:
+                    bundle_process(product_details[0], product_details[1], order_details[0], order_details[1])
                 elif order_details[1] == 'Carry Out':
                     phys_move(product_details[0], 'Donum', product_details[1], order_details[0], order_details[1]) 
                 elif order_details[1] == 'Pickup':
@@ -63,14 +65,14 @@ def update_order(data):
                 return
             else:
                 # Process inventory moves by sku
-                products = payload.get('products')
-                for product in products:
-                    product_details = extract_data(product.get('product'), ['sku', 'quantity'])
-                    if track_check(sku) == True:
+                items = payload.get('items')
+                for item in items:
+                    product_details = extract_data(item.get('item'), ['sku', 'quantity'])
+                    if track_check(product_details[0]) == True:
                         continue
                     # Check for bundles and process accordingly
-                    elif bundle_check(*product_details, order_details[0], order_details[1]) == True:
-                        bundle_process(*product_details, order_details[0], order_details[1])
+                    elif bundle_check(product_details[0], product_details[1], order_details[0], order_details[1]) == True:
+                        bundle_process(product_details[0], product_details[1], order_details[0], order_details[1])
                     # Process non-bundle inventory moves
                     if order_details[2] == 'No Fulfillment Required':
                         location = get_ship_location(order_details[1])
@@ -90,12 +92,12 @@ def special_order(data):
     try:
         payload = data.get('payload')
         order_details = extract_data(payload, ['orderNumber', 'orderDeliveryMethod', 'fulfillmentStatus', 'purchaseType'])
-        products = payload.get('products')
-        for product in products:
-            product_details = extract_data(product.get('product'), ['sku', 'quantity'])
+        items = payload.get('items')
+        for item in items:
+            product_details = extract_data(item.get('item'), ['sku', 'quantity'])
             location = get_ship_location(order_details[1])
             # Check for bundles and process accordingly
-            if track_check(sku) == True:
+            if track_check(product_details[0]) == True:
                 continue
             if bundle_check(*product_details, order_details[0], order_details[1]) == True:
                 bundle_process(*product_details, order_details[0], order_details[1])

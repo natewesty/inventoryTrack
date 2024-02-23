@@ -4,6 +4,9 @@ from sqlalchemy import text
 from .db_interact import upload_data
 from .data_processing import extract_data
 
+# Log issues to main log
+logger = logging.getLogger(__name__)
+
 def process_product(data):
     try:
         action = data.get('action')

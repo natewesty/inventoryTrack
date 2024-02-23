@@ -13,6 +13,17 @@
             <h1 class = "title has-text-centered">Inventory</h1>
             <div class="columns is-centered">
                <div class="column is-half">
+                  <form action="/search" method="get" class="field has-addons">
+                     <div class="control">
+                         <input class="input" type="text" name="sku" placeholder="Search SKU">
+                     </div>
+                     <div class="control">
+                         <button class="button is-info" type="submit">Search</button>
+                     </div>
+                     <div class="control">
+                         <a href="/" class="button is-primary">Show All</a>
+                     </div>
+                  </form>
                   <table class = "table is-bordered">
                      <thead>
                         <tr>

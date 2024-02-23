@@ -2,6 +2,9 @@ import sqlalchemy
 import logging
 from sqlalchemy import text
 from .db_interact import upload_data, query_data, get_ledger_data, get_ship_location, update_disp
+
+# Log issues to main log
+logger = logging.getLogger(__name__)
     
 # Define the location aliases
 location_aliases = {

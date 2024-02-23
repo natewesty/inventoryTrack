@@ -6,8 +6,8 @@ import sqlalchemy
 from sqlalchemy import text
 from google.cloud.sql.connector import Connector, IPTypes
 
-# Configure logging
-logging.basicConfig(filename='db_interact.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Log issues to main log
+logger = logging.getLogger(__name__)
 
 def connect_with_connector() -> sqlalchemy.engine.base.Engine:
     instance_connection_name = 'inventory-project-412117:us-west1:inventory'
@@ -67,10 +67,7 @@ def get_ledger_data(order_id):
     try:
         select_statement = text('SELECT fulfillment_status FROM "InventoryLedger" WHERE order_id = :order_id')
         results = query_data(select_statement, params={"order_id": order_id})
-        if results:
-            return results[0][0]  # Assuming fulfillment_status is the first column
-        else:
-            return None
+        return results if results else None
     except Exception as e:
         logging.error(f"Error getting ledger data: {e}")
         return None
